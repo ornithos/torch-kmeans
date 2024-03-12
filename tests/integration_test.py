@@ -95,7 +95,7 @@ def test_kmeans(synthetic_dataset: SyntheticDataset, n_clusters: int, max_iter: 
     mi_score_ours = adjusted_mutual_info_score(y, assignments.numpy())
     mi_score_sk = adjusted_mutual_info_score(y, sk_assignments)
 
-    assert mi_score_ours >= mi_score_sk * 0.80  # similar or better to sklearn's score.
+    assert mi_score_ours >= mi_score_sk * 0.90  # similar or better to sklearn's score.
     """
     Note: scikit-learn typically uses a better initialisation, and has a better score.
     We throttle sklearn to use a simpler strategy, and typically beat it, but due to randomness,

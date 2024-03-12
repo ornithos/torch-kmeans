@@ -24,7 +24,7 @@ class KmeansResult:
     converged: bool = field(compare=False)
     interia: float = field(compare=True, default=float("inf"))
 
-    def calculate_inertia(self, X: torch.Tensor) -> float:
+    def calculate_inertia(self, X: torch.Tensor) -> None:
         """
         Calculate the inertia of the model.
         While this is potentially slow (loop), it is memory efficient.
@@ -41,4 +41,4 @@ class KmeansResult:
         n_clusters = self.centers.shape[0]
         for i in range(n_clusters):
             inertia += ((X[self.assignments == i] - self.centers[i]) ** 2).sum().item()
-        return inertia
+        self.inertia = inertia

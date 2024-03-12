@@ -73,7 +73,7 @@ class KMeans(nn.Module):
         if self._use_tqdm:
             if operation == "start":
                 c_init = c_init if c_init is not None else 0
-                self._tqdm_meter = tqdm(desc=f"[kmeans ({c_init:%02d}/{self.n_init})]")
+                self._tqdm_meter = tqdm(desc=f"[kmeans ({c_init:d}/{self.n_init})]")
             elif operation == "stop":
                 self._tqdm_meter.disable = True  # type: ignore[attr-defined]
                 """mypy: tqdm_meter exists <=iff=> use_tqdm"""

@@ -1,0 +1,16 @@
+[tool.black]
+line-length = 100
+
+[tool.isort]
+profile = "black"
+lines_after_imports = 2
+
+[tool.ruff]
+line-length = 100
+
+[tool.pytest.ini_options]
+addopts = "-W ignore::DeprecationWarning"
+# filterwarnings =
+#     ignore::DeprecationWarninglog_cli = true
+log_cli = true
+log_cli_level = "INFO"

@@ -1,7 +1,9 @@
 """Bootstrap setup file."""
+
 import os
 
 from setuptools import find_packages, setup
+
 
 # get the current package version
 VERSION = "0.0.1"

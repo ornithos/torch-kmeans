@@ -1,4 +1,6 @@
-from typing import Optional, Tuple, Callable
+import random
+from typing import Optional, Tuple
+
 import torch
 
 
@@ -26,59 +28,58 @@ def initialize_centers(
     return cluster_centers, indices
 
 
-def sanitize_centers(
+def _revive_empty_clusters(
     X: torch.Tensor,
     centers: torch.Tensor,
-    distance_function: Callable,
-    n_clusters: int,
-    snap_to_data: bool = False,
+    cls_assignments: torch.Tensor,
+    x_assignments: torch.Tensor,
+    n_clusters: Optional[int] = None,
     seed: Optional[int] = None,
 ) -> torch.Tensor:
     """
-    Sanitize cluster centers (internal method). This checks a few attributes, and is
-    used to avoid empty clusters.
+    Revive empty clusters (internal method). This is used to handle non-assigned
+    centers (scatter_mean may not always fill every center).
+
+    We must be a little careful here, because a typical "random" strategy will
+    be to initialise the new cluster centers with random data points. However,
+    this can lead to an edge-case where the new cluster centers are initialised
+    with points that are identical to existing cluster centers.
 
     Args:
         X (torch.Tensor): input data
         centers (torch.Tensor): cluster centers
-        distance_function (Callable): distance function
-        n_clusters (int): number of clusters,
-        snap_to_data (bool): whether to move each cluster centers to the nearest data point.
-            This is useful to avoid empty clusters.
-        seed (int): random seed
-
-    Returns:
-        torch.Tensor: sanitized cluster centers
-    """
-    num_extra = n_clusters - centers.shape[0]
-    if num_extra < 0:
-        raise ValueError("Number of `cluster_centers` is greater than `n_clusters`")
-
-    distance_matrix = distance_function(X, centers)
-    indices = torch.argmin(distance_matrix, dim=0)
-
-    if num_extra > 0:
-        _, indices_addl = initialize_centers(X, len(indices) + num_extra, seed=seed)
-        indices_addl = list(set(indices_addl.tolist()) - set(indices.tolist()))[:num_extra]
-        indices = torch.cat([indices, torch.LongTensor(indices_addl)])
-
-    centers = X[indices]
-    return centers
-
-
-def _revive_dead_clusters(X: torch.Tensor, centers: torch.Tensor) -> torch.Tensor:
-    """
-    Revive dead clusters (internal method). This is used to handle non-assigned
-    centers (scatter_mean may not always fill every center), default to 0.
-
-    Args:
-        X (torch.Tensor): input data
-        centers (torch.Tensor): cluster centers
+        cls_assignments (torch.Tensor): closest cluster center of each data point
+        x_assignments (torch.Tensor): closest index of each cluster center
+        n_clusters (int): number of clusters (optional)
+        seed (int): random seed (optional)
 
     Returns:
         torch.Tensor: revived cluster centers
     """
-    new_centers_init = X[torch.randperm(len(X))[: len(centers)]]
-    mask_unasgnd = centers == 0
-    centers[mask_unasgnd] = new_centers_init[mask_unasgnd]
+    n_x = X.shape[0]
+    if n_clusters is not None:
+        if n_clusters > centers.shape[0]:
+            init_extra_centers = torch.zeros(
+                n_clusters - centers.shape[0],
+                *centers.shape[1:],
+                device=centers.device,
+                dtype=centers.dtype,
+            )
+            centers = torch.concat((centers, init_extra_centers), dim=0)
+    else:
+        n_clusters = centers.shape[0]
+
+    cls_ixs = torch.unique(cls_assignments)
+    dead_cluster_ixs = list(set(range(n_clusters)) - set(cls_ixs.cpu().tolist()))
+
+    if dead_cluster_ixs:
+        k_new = len(dead_cluster_ixs)
+        x_ixs_used = x_assignments.cpu().tolist()
+        if seed:
+            random.seed(seed)
+        cls_ix_new_candidates = set(random.sample(range(n_x), n_clusters))
+        cls_ix_new = list(cls_ix_new_candidates - set(x_ixs_used))[:k_new]
+        new_centers_init = X[cls_ix_new]
+        centers[dead_cluster_ixs] = new_centers_init
+
     return centers
